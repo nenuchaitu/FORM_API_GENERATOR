@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Producer HTML – API Form Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.4rem;
+    }
+
+    .card {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #020617;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      padding: 16px 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.85rem;
+      color: #cbd5f5;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px 8px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+      border-color: #38bdf8;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .row > div {
+      flex: 1;
+    }
+
+    .field-config {
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 8px;
+      background: #020617;
+    }
+
+    .field-config-title {
+      font-size: 0.8rem;
+      color: #a5b4fc;
+      margin-bottom: 4px;
+    }
+
+    button {
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    #setFieldsBtn {
+      background: #111827;
+      color: #e5e7eb;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      margin-left: 8px;
+    }
+
+    #generateBtn {
+      background: #38bdf8;
+      color: #0b1120;
+      margin-top: 6px;
+      margin-right: 6px;
+    }
+
+    #openBtn {
+      background: transparent;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      color: #e5e7eb;
+      margin-top: 6px;
+    }
+
+    small {
+      display: block;
+      margin-top: -6px;
+      margin-bottom: 10px;
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.78rem;
+      padding: 8px;
+      box-sizing: border-box;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      white-space: pre;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Producer HTML → Result HTML</h1>
+    <p style="font-size:0.9rem; color:#9ca3af;">
+      Configure fields, HTTP method and API URL. On "Generate Result HTML", this Producer HTML will build the Result HTML page.
+      You can copy it or open it in a new tab.
+    </p>
+
+    <!-- API configuration -->
+    <label for="httpMethod">HTTP method</label>
+    <select id="httpMethod">
+      <option value="GET">GET</option>
+      <option value="POST" selected>POST</option>
+      <option value="PUT">PUT</option>
+      <option value="DELETE">DELETE</option>
+    </select>
+    <small>
+      GET / DELETE: data is sent as query parameters.
+      POST / PUT: data is sent as JSON body.
+    </small>
+
+    <label for="apiUrl">API URL</label>
+    <input type="text" id="apiUrl" placeholder="https://api.example.com/endpoint" />
+
+    <!-- field count -->
+    <div class="row" style="align-items:flex-end; margin-bottom:10px;">
+      <div>
+        <label for="fieldCount">How many fields do you need?</label>
+        <input type="number" id="fieldCount" min="1" value="2" />
+      </div>
+      <div style="flex:0 0 auto;">
+        <button id="setFieldsBtn" type="button">Set fields</button>
+      </div>
+    </div>
+    <small>Example: 2 → Name, Email.</small>
+
+    <!-- dynamic field configurations -->
+    <div id="fieldsContainer"></div>
+
+    <button id="generateBtn" type="button">Generate Result HTML</button>
+    <button id="openBtn" type="button" disabled>Open Result HTML in new tab</button>
+
+    <small>
+      Copy the generated Result HTML below into a file (e.g. <code>result.html</code>), or use the button to open it.
+    </small>
+
+    <label for="resultHtmlOutput">Generated Result HTML</label>
+    <textarea id="resultHtmlOutput" placeholder="Click Generate to see the Result HTML here."></textarea>
+  </div>
+
+  <script>
+    // ---------- Utils ----------
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    // ---------- Field config UI ----------
+    function buildFieldConfigs(count) {
+      var container = document.getElementById("fieldsContainer");
+      container.innerHTML = "";
+
+      for (var i = 0; i < count; i++) {
+        var wrapper = document.createElement("div");
+        wrapper.className = "field-config";
+
+        var title = document.createElement("div");
+        title.className = "field-config-title";
+        title.textContent = "Field " + (i + 1);
+        wrapper.appendChild(title);
+
+        var labelLabel = document.createElement("label");
+        labelLabel.textContent = "Field label (displayed to user)";
+        var labelInput = document.createElement("input");
+        labelInput.type = "text";
+        labelInput.className = "field-label";
+        labelInput.placeholder = i === 0 ? "Name" : (i === 1 ? "Email" : "Field " + (i + 1));
+
+        var payloadLabel = document.createElement("label");
+        payloadLabel.textContent = "Payload name (used as key in API payload)";
+        var payloadInput = document.createElement("input");
+        payloadInput.type = "text";
+        payloadInput.className = "payload-name";
+        payloadInput.placeholder = i === 0 ? "user_name" : (i === 1 ? "user_email" : "field_" + (i + 1));
+
+        wrapper.appendChild(labelLabel);
+        wrapper.appendChild(labelInput);
+        wrapper.appendChild(payloadLabel);
+        wrapper.appendChild(payloadInput);
+
+        container.appendChild(wrapper);
+      }
+    }
+
+    // initial default
+    buildFieldConfigs(2);
+
+    document.getElementById("setFieldsBtn").addEventListener("click", function () {
+      var count = parseInt(document.getElementById("fieldCount").value, 10);
+      if (!count || count < 1) {
+        alert("Enter a valid number of fields (at least 1).");
+        return;
+      }
+      buildFieldConfigs(count);
+    });
+
+    // ---------- Build Result HTML ----------
+    function buildResultHtml(config) {
+      var fieldsHtml = "";
+      for (var i = 0; i < config.fields.length; i++) {
+        var f = config.fields[i];
+        fieldsHtml +=
+          '      <div class="field-row">\n' +
+          '        <label for="' + f.id + '">' + escapeHtml(f.label) + '</label>\n' +
+          '        <input id="' + f.id + '" type="text" />\n' +
+          "      </div>\n";
+      }
+
+      // JSON config embedded into Result HTML
+      var configJson = JSON.stringify(config).replace(/</g, "\\u003c");
+
+      var html = "";
+      html += "<!DOCTYPE html>\n";
+      html += '<html lang="en">\n';
+      html += "<head>\n";
+      html += '  <meta charset="UTF-8" />\n';
+      html += "  <title>Result HTML – API Form</title>\n";
+      html += '  <meta name="viewport" content="width=device-width, initial-scale=1" />\n';
+      html += "  <style>\n";
+      html += "    body {\n";
+      html += "      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;\n";
+      html += "      margin: 0;\n";
+      html += "      min-height: 100vh;\n";
+      html += "      display: flex;\n";
+      html += "      align-items: center;\n";
+      html += "      justify-content: center;\n";
+      html += "      background: #0f172a;\n";
+      html += "      color: #e5e7eb;\n";
+      html += "      padding: 20px;\n";
+      html += "    }\n";
+      html += "    .container {\n";
+      html += "      max-width: 600px;\n";
+      html += "      width: 100%;\n";
+      html += "      background: #020617;\n";
+      html += "      border-radius: 10px;\n";
+      html += "      border: 1px solid rgba(148, 163, 184, 0.7);\n";
+      html += "      padding: 16px 18px;\n";
+      html += "    }\n";
+      html += "    h1 {\n";
+      html += "      margin: 0 0 8px;\n";
+      html += "      font-size: 1.2rem;\n";
+      html += "    }\n";
+      html += "    p {\n";
+      html += "      font-size: 0.9rem;\n";
+      html += "      color: #9ca3af;\n";
+      html += "      margin: 0 0 14px;\n";
+      html += "    }\n";
+      html += "    form {\n";
+      html += "      margin-bottom: 10px;\n";
+      html += "    }\n";
+      html += "    .field-row {\n";
+      html += "      margin-bottom: 10px;\n";
+      html += "    }\n";
+      html += "    label {\n";
+      html += "      display: block;\n";
+      html += "      margin-bottom: 3px;\n";
+      html += "      font-size: 0.8rem;\n";
+      html += "      color: #cbd5f5;\n";
+      html += "    }\n";
+      html += "    input[type='text'] {\n";
+      html += "      width: 100%;\n";
+      html += "      box-sizing: border-box;\n";
+      html += "      padding: 6px 8px;\n";
+      html += "      border-radius: 6px;\n";
+      html += "      border: 1px solid rgba(148, 163, 184, 0.7);\n";
+      html += "      background: #020617;\n";
+      html += "      color: #e5e7eb;\n";
+      html += "      font-size: 0.85rem;\n";
+      html += "      outline: none;\n";
+      html += "    }\n";
+      html += "    input[type='text']:focus {\n";
+      html += "      border-color: #38bdf8;\n";
+      html += "    }\n";
+      html += "    button {\n";
+      html += "      padding: 7px 14px;\n";
+      html += "      border-radius: 999px;\n";
+      html += "      border: none;\n";
+      html += "      background: #38bdf8;\n";
+      html += "      color: #0b1120;\n";
+      html += "      font-size: 0.85rem;\n";
+      html += "      font-weight: 500;\n";
+      html += "      cursor: pointer;\n";
+      html += "      margin-top: 4px;\n";
+      html += "    }\n";
+      html += "    .status {\n";
+      html += "      font-size: 0.8rem;\n";
+      html += "      color: #9ca3af;\n";
+      html += "      margin-top: 8px;\n";
+      html += "    }\n";
+      html += "    pre {\n";
+      html += "      margin-top: 8px;\n";
+      html += "      background: #020617;\n";
+      html += "      border-radius: 8px;\n";
+      html += "      border: 1px solid rgba(148, 163, 184, 0.7);\n";
+      html += "      padding: 8px;\n";
+      html += "      font-size: 0.8rem;\n";
+      html += "      max-height: 250px;\n";
+      html += "      overflow: auto;\n";
+      html += "      white-space: pre-wrap;\n";
+      html += "    }\n";
+      html += "  </style>\n";
+      html += "</head>\n";
+      html += "<body>\n";
+      html += '  <div class="container">\n';
+      html += "    <h1>Result HTML – API Form</h1>\n";
+      html += "    <p>\n";
+      html += "      This form sends an HTTP " + config.method.toUpperCase() + " request to:<br />\n";
+      html += "      <code>" + escapeHtml(config.apiUrl) + "</code>\n";
+      html += "    </p>\n";
+      html += '    <form id="apiForm">\n';
+      html += fieldsHtml;
+      html += '      <button type="submit">Send request</button>\n';
+      html += "    </form>\n";
+      html += '    <div class="status" id="status">Idle.</div>\n';
+      html += '    <pre id="response"></pre>\n';
+      html += "  </div>\n";
+      html += '  <script id="config" type="application/json">' + configJson + "<" + "/script>\n";
+      html += "  <script>\n";
+      html += "(function () {\n";
+      html += "  var cfgEl = document.getElementById('config');\n";
+      html += "  var cfg = JSON.parse(cfgEl.textContent || cfgEl.innerText || '{}');\n";
+      html += "  var form = document.getElementById('apiForm');\n";
+      html += "  var statusEl = document.getElementById('status');\n";
+      html += "  var responseEl = document.getElementById('response');\n";
+      html += "  var endpoint = cfg.apiUrl;\n";
+      html += "  var method = (cfg.method || 'GET').toUpperCase();\n";
+      html += "\n";
+      html += "  form.addEventListener('submit', function (event) {\n";
+      html += "    event.preventDefault();\n";
+      html += "    statusEl.textContent = 'Sending request...';\n";
+      html += "    responseEl.textContent = '';\n";
+      html += "\n";
+      html += "    var payload = {};\n";
+      html += "    if (Array.isArray(cfg.fields)) {\n";
+      html += "      cfg.fields.forEach(function (field) {\n";
+      html += "        var input = document.getElementById(field.id);\n";
+      html += "        if (input && field.payloadName) {\n";
+      html += "          payload[field.payloadName] = input.value;\n";
+      html += "        }\n";
+      html += "      });\n";
+      html += "    }\n";
+      html += "\n";
+      html += "    var options = { method: method, headers: {} };\n";
+      html += "    var urlToCall = endpoint;\n";
+      html += "\n";
+      html += "    if (method === 'GET' || method === 'DELETE') {\n";
+      html += "      var params = new URLSearchParams();\n";
+      html += "      for (var key in payload) {\n";
+      html += "        if (Object.prototype.hasOwnProperty.call(payload, key)) {\n";
+      html += "          params.append(key, payload[key]);\n";
+      html += "        }\n";
+      html += "      }\n";
+      html += "      var qs = params.toString();\n";
+      html += "      if (qs) {\n";
+      html += "        urlToCall = endpoint.indexOf('?') === -1 ? endpoint + '?' + qs : endpoint + '&' + qs;\n";
+      html += "      }\n";
+      html += "    } else {\n";
+      html += "      options.headers['Content-Type'] = 'application/json';\n";
+      html += "      options.body = JSON.stringify(payload);\n";
+      html += "    }\n";
+      html += "\n";
+      html += "    fetch(urlToCall, options)\n";
+      html += "      .then(function (res) {\n";
+      html += "        statusEl.textContent = 'Response status: ' + res.status;\n";
+      html += "        return res.text();\n";
+      html += "      })\n";
+      html += "      .then(function (text) {\n";
+      html += "        responseEl.textContent = text;\n";
+      html += "      })\n";
+      html += "      .catch(function (err) {\n";
+      html += "        statusEl.textContent = 'Request failed.';\n";
+      html += "        responseEl.textContent = String(err);\n";
+      html += "      });\n";
+      html += "  });\n";
+      html += "})();\n";
+      html += "  <" + "/script>\n";
+      html += "</body>\n";
+      html += "</html>\n";
+
+      return html;
+    }
+
+    // ---------- Wire up buttons ----------
+    var generateBtn = document.getElementById("generateBtn");
+    var openBtn = document.getElementById("openBtn");
+    var resultOutput = document.getElementById("resultHtmlOutput");
+    var lastObjectUrl = null;
+
+    generateBtn.addEventListener("click", function () {
+      var method = document.getElementById("httpMethod").value;
+      var apiUrl = document.getElementById("apiUrl").value.trim();
+      if (!apiUrl) {
+        alert("API URL is required.");
+        return;
+      }
+
+      var configDivs = document.querySelectorAll(".field-config");
+      if (!configDivs.length) {
+        alert("Define at least one field.");
+        return;
+      }
+
+      var fields = [];
+      for (var i = 0; i < configDivs.length; i++) {
+        var div = configDivs[i];
+        var labelInput = div.querySelector(".field-label");
+        var payloadInput = div.querySelector(".payload-name");
+
+        var label = (labelInput.value || "").trim();
+        var payloadName = (payloadInput.value || "").trim();
+
+        if (!label || !payloadName) {
+          alert("All fields must have a label and a payload name.");
+          return;
+        }
+
+        fields.push({
+          id: "field_" + i,
+          label: label,
+          payloadName: payloadName
+        });
+      }
+
+      var config = {
+        apiUrl: apiUrl,
+        method: method,
+        fields: fields
+      };
+
+      var html = buildResultHtml(config);
+      resultOutput.value = html;
+      openBtn.disabled = false;
+    });
+
+    openBtn.addEventListener("click", function () {
+      var html = resultOutput.value;
+      if (!html) return;
+
+      var blob = new Blob([html], { type: "text/html" });
+      if (lastObjectUrl) {
+        URL.revokeObjectURL(lastObjectUrl);
+      }
+      lastObjectUrl = URL.createObjectURL(blob);
+      window.open(lastObjectUrl, "_blank");
+    });
+  </script>
+</body>
+</html>

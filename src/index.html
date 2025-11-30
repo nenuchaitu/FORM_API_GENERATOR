@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Producer HTML – API Form Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./css/main.css" />
+</head>
+<body>
+  <div class="card">
+    <h1>Producer HTML → Result HTML</h1>
+
+    <p class="lead">
+      Configure fields, HTTP method and API URL. This page will generate a Result HTML form page.
+    </p>
+
+    <label for="httpMethod">HTTP method</label>
+    <select id="httpMethod">
+      <option value="GET">GET</option>
+      <option value="POST" selected>POST</option>
+      <option value="PUT">PUT</option>
+      <option value="DELETE">DELETE</option>
+    </select>
+
+    <label for="apiUrl">API URL</label>
+    <input type="text" id="apiUrl" placeholder="https://api.example.com/endpoint" />
+
+    <div class="row">
+      <div>
+        <label for="fieldCount">How many fields do you need?</label>
+        <input type="number" id="fieldCount" min="1" value="2" />
+      </div>
+      <div class="row-actions">
+        <button id="setFieldsBtn" type="button">Set fields</button>
+      </div>
+    </div>
+
+    <div id="fieldsContainer"></div>
+
+    <button id="generateBtn" type="button">Generate Result HTML</button>
+    <button id="openBtn" type="button" disabled>Open Result HTML in new tab</button>
+
+    <label for="resultHtmlOutput">Generated Result HTML</label>
+    <textarea id="resultHtmlOutput"
+              placeholder="Click Generate to see the Result HTML here."></textarea>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
